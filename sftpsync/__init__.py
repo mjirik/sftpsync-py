@@ -131,11 +131,11 @@ class Sftp(object):
     def _save(self, src, dst, src_stat, remote=True):
         if remote:
             logger.info('copying %s to %s@%s:%s', src, self.username, self.host, dst)
-            self.sftp.put(src, dst)
+            self.sftp.put(src, dst, callback=self.callback)
             self.sftp.utime(dst, (int(src_stat.st_atime), int(src_stat.st_mtime)))
         else:
             logger.info('copying %s@%s:%s to %s', self.username, self.host, src, dst)
-            self.sftp.get(src, dst)
+            self.sftp.get(src, dst, callback=self.callback)
             os.utime(dst, (int(src_stat.st_atime), int(src_stat.st_mtime)))
 
     def _delete_dst(self, path, files, remote=True, dry=False):
@@ -160,7 +160,7 @@ class Sftp(object):
             return []
         return [re.compile(f) for f in filters]
 
-    def sync(self, src, dst, download=True, include=None, exclude=None, delete=False, dry=False):
+    def sync(self, src, dst, download=True, include=None, exclude=None, delete=False, dry=False, callback=None):
         '''Sync files and directories.
 
         :param src: source directory
@@ -171,7 +171,11 @@ class Sftp(object):
         :param exclude: list of regex patterns the source files must not match
         :param delete: remove destination files and directories not present
             at source or filtered by the include/exlude patterns
+        :param callback: callback function (form: func(int, int)) that accepts the
+            bytes transferred so far and the total bytes to be transferred
         '''
+
+        self.callback = callback
         include = self._get_filters(include)
         exclude = self._get_filters(exclude)
 
