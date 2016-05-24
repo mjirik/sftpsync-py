@@ -26,3 +26,11 @@ Example:
     dst = '/mnt/sdcard/data/'
 
     sftp.sync(src, dst, download=False, delete=True)
+    
+    
+Install:
+
+        pip install sftpsync
+
+or
+        conda install -c mjirik sftpsync
