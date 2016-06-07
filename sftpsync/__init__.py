@@ -43,6 +43,17 @@ class Sftp(object):
                 if i == max_attempts - 1:
                     raise SshError(str(e))
 
+    def _join_remote(self, path1, path2):
+        """
+        for remote path is separator always "/"
+        :param path1:
+        :param path2:
+        :return: joined paths
+        """
+
+        path1 = path1.rstrip('/')
+        return path1 + "/" + path2
+
     def _walk_remote(self, path, topdown=True):
         try:
             res = self.sftp.listdir_attr(path)
@@ -50,7 +61,7 @@ class Sftp(object):
             res = []
 
         for stat in res:
-            file = os.path.join(path, stat.filename)
+            file = self._join_remote(path, stat.filename)
 
             if not S_ISDIR(stat.st_mode):
                 yield 'file', file, stat
