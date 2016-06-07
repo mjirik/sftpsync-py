@@ -190,6 +190,8 @@ class Sftp(object):
         include = self._get_filters(include)
         exclude = self._get_filters(exclude)
 
+        src = src.replace(os.sep, '/')
+        dst = dst.replace(os.sep, '/')
         if src.endswith('/') != dst.endswith('/'):
             dst = os.path.join(dst, os.path.basename(src.rstrip('/')))
         src = src.rstrip('/')
