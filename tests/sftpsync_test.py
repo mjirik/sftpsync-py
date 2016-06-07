@@ -16,8 +16,6 @@ class MyTestCase(unittest.TestCase):
         from sftpsync import Sftp
 
         sftp = Sftp('147.228.47.162', 'paul', 'P4ul')
-        # hu = sftp.sftp.listdir_attr("from_server")
-        dir_list = sftp.sftp.listdir_attr("from_server")
 
         src = 'from_server/'
         # src = 'to_server'
