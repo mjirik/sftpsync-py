@@ -192,7 +192,9 @@ class Sftp(object):
 
         src = src.replace(os.sep, '/')
         dst = dst.replace(os.sep, '/')
+        logger.debug()
         if src.endswith('/') != dst.endswith('/'):
+
             dst = os.path.join(dst, os.path.basename(src.rstrip('/')))
         src = src.rstrip('/')
         re_base = re.compile(r'^%s/' % re.escape(src))
