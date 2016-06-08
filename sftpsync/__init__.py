@@ -190,8 +190,8 @@ class Sftp(object):
         include = self._get_filters(include)
         exclude = self._get_filters(exclude)
 
-        src = src.replace(os.sep, '/')
-        dst = dst.replace(os.sep, '/')
+        src = src.replace('\\', '/')
+        dst = dst.replace('\\', '/')
         if src.endswith('/') != dst.endswith('/'):
             logger.debug("Paths ends with different symbol. Paths are joined.")
             dst = os.path.join(dst, os.path.basename(src.rstrip('/')))

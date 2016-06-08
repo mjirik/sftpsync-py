@@ -52,7 +52,7 @@ class MyTestCase(unittest.TestCase):
         exclude = [r'^Music/', r'^Video/']
 
         sftp.sync(src, dst, download=True, exclude=exclude, delete=False)
-        self.assertTrue(op.exists(op.join(dst,"test.txt")))
+        self.assertTrue(op.exists(op.join(dst.rstrip("\\"),"test.txt")))
         if clean and op.exists(dst):
             shutil.rmtree(dst)
 
@@ -64,7 +64,8 @@ class MyTestCase(unittest.TestCase):
         sftp = Sftp('147.228.47.162', 'paul', 'P4ul')
 
         dst = op.abspath(dst)
-        dst += '\\'
+        if not (dst.endswith('/') or dst.endswith('\\')):
+            dst += '\\'
         if op.exists(dst):
             shutil.rmtree(dst)
 
@@ -73,7 +74,9 @@ class MyTestCase(unittest.TestCase):
         logger.debug("src %s", src)
         logger.debug("dst %s", dst)
         sftp.sync(src, dst , download=True, exclude=exclude, delete=False)
-        self.assertTrue(op.exists(op.join(dst,"test.txt")))
+        expected_path = op.join(dst.rstrip("\\"),"test.txt")
+        logger.debug("Expected path: %s", expected_path)
+        self.assertTrue(op.exists(expected_path))
 
         if clean and op.exists(dst):
             shutil.rmtree(dst)
