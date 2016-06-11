@@ -55,10 +55,10 @@ class Sftp(object):
 
                 if path2.startswith(path2_start):
                     logger.debug('make relative path to start')
-                logger.debug("path2       : %s", path2)
-                logger.debug("path2_start : %s", path2_start)
-                path2 = path2[len(path2_start):]
-                logger.debug("path2 after : %s", path2)
+                    logger.debug("path2       : %s", path2)
+                    logger.debug("path2_start : %s", path2_start)
+                    path2 = path2[len(path2_start):]
+                    logger.debug("path2 after : %s", path2)
 
             dst = self._join_remote(path1, path2)
         else:
