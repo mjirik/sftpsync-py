@@ -46,16 +46,19 @@ class Sftp(object):
     def _join(self, path1, path2, remote, path2_start=None):
         if remote:
             if not path2_start is None:
-                logger.debug('make relative path to start')
+                # this is necessary on windows
+                # path2 is there different from the linux
                 path2 = path2.replace('\\','/')
                 path2_start = path2_start.replace('\\','/')
-                logger.debug(path2)
-                logger.debug(path2_start)
                 if path2_start[-1] != '/':
                     path2_start += '/'
 
+                if path2.startswith(path2_start):
+                    logger.debug('make relative path to start')
+                logger.debug("path2       : %s", path2)
+                logger.debug("path2_start : %s", path2_start)
                 path2 = path2[len(path2_start):]
-                logger.debug(path2)
+                logger.debug("path2 after : %s", path2)
 
             dst = self._join_remote(path1, path2)
         else:
