@@ -43,6 +43,22 @@ class Sftp(object):
                 if i == max_attempts - 1:
                     raise SshError(str(e))
 
+    def _join(self, path1, path2, remote, path2_start=None):
+        if remote:
+            if not path2_start is None:
+                path2 = path2.replace('\\','/')
+                path2_start = path2_start.replace('\\','/')
+                if path2_start[-1] != '/':
+                    path2_start += '/'
+
+                path2 = path2[len(path2_start):]
+
+            dst = self._join_remote(path1, path2)
+        else:
+            dst = os.path.join(path1, path2)
+            # dst = self._join_remote(path1, path2)
+        return dst
+
     def _join_remote(self, path1, path2):
         """
         for remote path is separator always "/"
@@ -76,6 +92,7 @@ class Sftp(object):
                     yield 'dir', file, None
 
     def _walk_local(self, path, topdown=True):
+        logger.debug('local walk %s', path)
         for path, dirs, files in os.walk(path, topdown=topdown):
             for file in files:
                 file = os.path.join(path, file)
@@ -194,7 +211,7 @@ class Sftp(object):
         dst = dst.replace('\\', '/')
         if src.endswith('/') != dst.endswith('/'):
             logger.debug("Paths ends with different symbol. Paths are joined.")
-            dst = os.path.join(dst, os.path.basename(src.rstrip('/')))
+            dst = self._join(dst, os.path.basename(src.rstrip('/')), remote=not download)
         src = src.rstrip('/')
         re_base = re.compile(r'^%s/' % re.escape(src))
         if not src:
@@ -208,11 +225,14 @@ class Sftp(object):
 
         for type, file, stat in self._walk(src, remote=download):
             file_ = re_base.sub('', file)
+            file_ = file_.replace('\\', '/')
             if not self._validate_src(file_, include, exclude):
                 logger.debug('filtered %s', file)
                 continue
 
-            dst_file = os.path.join(dst, file_)
+            dst_file = self._join(dst, file_, remote=not download, path2_start=src)
+            logger.debug("walk      %s", file)
+            logger.debug("walk full %s", dst_file)
             dst_list[type].append(dst_file)
 
             if type == 'dir':
