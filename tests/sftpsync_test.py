@@ -7,12 +7,66 @@ import os.path as op
 
 clean = False
 
+def touch(fname, times=None):
+    with open(fname, 'a'):
+        os.utime(fname, times)
+
+def runServer():
+    return host, port, process
+
 class MyTestCase(unittest.TestCase):
+
+
+    @classmethod
+    def setUpClass(self):
+        import subprocess
+        import time
+
+        super(MyTestCase, self).setUpClass()
+        # prepare structure for test SFTP server
+        pth_from = "test_server/from_server/foo"
+        pth_to = "test_server/to_server"
+        if not os.path.exists(pth_from):
+            os.makedirs(pth_from)
+        if not os.path.exists(pth_to):
+            os.makedirs(pth_to)
+        touch("test_server/from_server/test.txt")
+        touch("test_server/from_server/foo/bar.txt")
+        # create RSA key
+        if not os.path.exists("id_rsa"):
+            os.system('ssh-keygen -t rsa -q -f id_rsa -P ""')
+
+        # run test SFTP server
+        # port = 22
+        self.port = 3373
+        self.host = "localhost"
+
+        subprocess.Popen(
+            "sftpserver -k ../id_rsa -p " + str(self.port),
+            cwd="test_server",
+            shell=True)
+        time.sleep(1)
+
+        # Server is available for all users and any password
+        # sftp://user@localhost:3373/
+
+    @classmethod
+    def tearDownClass(self):
+        super(MyTestCase, self).setUpClass()
+        os.system("pkill sftpserver")
+
+    def test_test_server(self):
+        import paramiko
+        pkey = paramiko.RSAKey.from_private_key_file('id_rsa')
+        transport = paramiko.Transport(('localhost', self.port))
+        transport.connect(username='admin', password='admin')# , pkey=pkey)
+        sftp = paramiko.SFTPClient.from_transport(transport)
+        sftp.listdir('.')
 
     def test_connection(self):
         from sftpsync import Sftp
 
-        sftp = Sftp('147.228.47.162', 'paul', 'P4ul')
+        sftp = Sftp(self.host, 'paul', 'P4ul', port=self.port)
         # hu = sftp.sftp.listdir_attr("from_server")
         dir_list = sftp.sftp.listdir_attr("from_server")
         self.assertIn(dir_list[0].filename, ["test.txt", "foo"])
@@ -25,7 +79,7 @@ class MyTestCase(unittest.TestCase):
 
         src = 'from_server/'
         dst = 'test_temp/'
-        sftp = Sftp('147.228.47.162', 'paul', 'P4ul')
+        sftp = Sftp(self.host, 'paul', 'P4ul', port=self.port)
 
         dst = op.expanduser(dst)
 
@@ -34,7 +88,7 @@ class MyTestCase(unittest.TestCase):
         # We don't want to backup everything
         exclude = [r'^Music/', r'^Video/']
         sftp.sync(src, dst, download=True, exclude=exclude, delete=False)
-        self.assertTrue(op.exists(op.join(dst,"test.txt")))
+        self.assertTrue(op.exists(op.join(dst, "test.txt")))
         if clean and op.exists(dst):
             shutil.rmtree(dst)
 
@@ -43,7 +97,7 @@ class MyTestCase(unittest.TestCase):
 
         src = 'from_server/'
         dst = 'test_temp_different_separator\\'
-        sftp = Sftp('147.228.47.162', 'paul', 'P4ul')
+        sftp = Sftp(self.host, 'paul', 'P4ul', port=self.port)
 
         dst = op.expanduser(dst)
         if op.exists(dst):
@@ -57,12 +111,14 @@ class MyTestCase(unittest.TestCase):
         if clean and op.exists(dst):
             shutil.rmtree(dst)
 
+
+
     def test_sync_abspath(self):
         from sftpsync import Sftp
 
         src = 'from_server/'
         dst = 'test_temp_abspath\\'
-        sftp = Sftp('147.228.47.162', 'paul', 'P4ul')
+        sftp = Sftp(self.host, 'paul', 'P4ul', port=self.port)
 
         dst = op.abspath(dst)
         if not (dst.endswith('/') or dst.endswith('\\')):
@@ -99,7 +155,7 @@ class MyTestCase(unittest.TestCase):
             f.write("text\n")
 
         # connect to sftp
-        sftp = Sftp('147.228.47.162', 'paul', 'P4ul')
+        sftp = Sftp(self.host, 'paul', 'P4ul', port=self.port)
 
         # make sure that test file is not on server
         dir_list = sftp.sftp.listdir_attr("to_server/")
