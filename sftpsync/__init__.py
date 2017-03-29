@@ -35,11 +35,11 @@ class Sftp(object):
                         password=password, timeout=timeout, **kwargs)
                 self.sftp = self.client.open_sftp()
                 return
-            except (paramiko.BadHostKeyException, paramiko.AuthenticationException), e:
+            except (paramiko.BadHostKeyException, paramiko.AuthenticationException) as e:
                 raise AuthenticationError(str(e))
-            except socket.timeout, e:
+            except socket.timeout as e:
                 raise TimeoutError(str(e))
-            except Exception, e:
+            except Exception as e:
                 if i == max_attempts - 1:
                     raise SshError(str(e))
 
@@ -184,7 +184,7 @@ class Sftp(object):
                 if not dry:
                     try:
                         callables[type](file)
-                    except Exception, e:
+                    except Exception as e:
                         logger.debug('failed to remove %s: %s', file, str(e))
                         continue
 
