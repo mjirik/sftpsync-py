@@ -7,22 +7,19 @@ import os.path as op
 
 clean = False
 
+
 def touch(fname, times=None):
     with open(fname, 'a'):
         os.utime(fname, times)
 
-def runServer():
-    return host, port, process
 
-class MyTestCase(unittest.TestCase):
-
-
+class SftpTestBase(unittest.TestCase):
     @classmethod
-    def setUpClass(self):
+    def setUpClass(cls):
         import subprocess
         import time
 
-        super(MyTestCase, self).setUpClass()
+        super(SftpTestBase, cls).setUpClass()
         # prepare structure for test SFTP server
         pth_from = "test_server/from_server/foo"
         pth_to = "test_server/to_server"
@@ -38,11 +35,11 @@ class MyTestCase(unittest.TestCase):
 
         # run test SFTP server
         # port = 22
-        self.port = 3373
-        self.host = "localhost"
+        cls.port = 3373
+        cls.host = "localhost"
 
         subprocess.Popen(
-            "sftpserver -k ../id_rsa -p " + str(self.port),
+            "sftpserver -k ../id_rsa -p " + str(cls.port),
             cwd="test_server",
             shell=True)
         time.sleep(1)
@@ -51,10 +48,12 @@ class MyTestCase(unittest.TestCase):
         # sftp://user@localhost:3373/
 
     @classmethod
-    def tearDownClass(self):
-        super(MyTestCase, self).setUpClass()
+    def tearDownClass(cls):
+        super(SftpTestBase, cls).setUpClass()
         os.system("pkill sftpserver")
 
+
+class SftpTests(SftpTestBase):
     def test_test_server(self):
         import paramiko
         pkey = paramiko.RSAKey.from_private_key_file('id_rsa')
@@ -111,8 +110,6 @@ class MyTestCase(unittest.TestCase):
         if clean and op.exists(dst):
             shutil.rmtree(dst)
 
-
-
     def test_sync_abspath(self):
         from sftpsync import Sftp
 
@@ -141,7 +138,6 @@ class MyTestCase(unittest.TestCase):
     def test_sync_upload(self):
         from sftpsync import Sftp
         src = 'to_server/'
-        src = 'c:/Users/mjirik/projects/sftpsync-py/to_server/'
         dst = 'to_server/'
 
         # create test dir
@@ -176,6 +172,77 @@ class MyTestCase(unittest.TestCase):
         dir_list = sftp.sftp.listdir_attr("to_server/")
         # check if direcotry is empty
         self.assertEqual(len(dir_list), 0)
+
+
+class SftpTestFilePermissions(SftpTestBase):
+    def setUp(self):
+        from sftpsync import Sftp
+        self.sftp = Sftp(self.host, 'paul', 'P4ul', port=self.port)
+
+        self.local_dir = 'test_local_file_permissions'
+        self.remote_relative_dir = 'test_remote_file_permissions'  # Relative to the remote session
+        self.remote_dir = os.path.join('test_server', self.remote_relative_dir)
+
+        self.test_local_sub_dir = os.path.join(self.local_dir, 'test_dir')
+        self.test_local_file = os.path.join(self.local_dir, 'test.txt')
+        self.test_remote_sub_dir = os.path.join(self.remote_dir, 'test_dir')
+        self.test_remote_file = os.path.join(self.remote_dir, 'test.txt')
+
+    def tearDown(self):
+        shutil.rmtree(self.local_dir)
+        shutil.rmtree(self.remote_dir)
+        self.sftp.client.close()
+
+    def test_file_permissions_download(self):
+        # Make remote files.
+        os.makedirs(self.test_remote_sub_dir)
+        touch(self.test_remote_file)
+
+        # Change permissions.
+        os.chmod(self.test_remote_sub_dir, os.stat(self.test_remote_sub_dir).st_mode | 0o007)
+        os.chmod(self.test_remote_file, os.stat(self.test_remote_file).st_mode | 0o007)
+
+        self.sftp.sync(src=self.remote_relative_dir, dst=self.local_dir, download=True)
+
+        # Check permissions match.
+        self.assertEqual(os.stat(self.test_remote_sub_dir).st_mode, os.stat(self.test_local_sub_dir).st_mode)
+        self.assertEqual(os.stat(self.test_remote_file).st_mode, os.stat(self.test_local_file).st_mode)
+
+        # Change permissions again (to check that files are re-syncd).
+        os.chmod(self.test_remote_sub_dir, os.stat(self.test_remote_sub_dir).st_mode & ~0o007)
+        os.chmod(self.test_remote_file, os.stat(self.test_remote_file).st_mode & ~0o007)
+
+        self.sftp.sync(src=self.remote_relative_dir, dst=self.local_dir, download=True)
+
+        # Check permissions match.
+        self.assertEqual(os.stat(self.test_remote_sub_dir).st_mode, os.stat(self.test_local_sub_dir).st_mode)
+        self.assertEqual(os.stat(self.test_remote_file).st_mode, os.stat(self.test_local_file).st_mode)
+
+    def test_file_permissions_upload(self):
+        # Make local files.
+        os.makedirs(self.test_local_sub_dir)
+        touch(self.test_local_file)
+
+        # Change permissions.
+        os.chmod(self.test_local_sub_dir, os.stat(self.test_local_sub_dir).st_mode | 0o007)
+        os.chmod(self.test_local_file, os.stat(self.test_local_file).st_mode | 0o007)
+
+        self.sftp.sync(src=self.local_dir, dst=self.remote_relative_dir, download=False)
+
+        # Check permissions match.
+        self.assertEqual(os.stat(self.test_local_sub_dir).st_mode, os.stat(self.test_remote_sub_dir).st_mode)
+        self.assertEqual(os.stat(self.test_local_file).st_mode, os.stat(self.test_remote_file).st_mode)
+
+        # Change permissions again (to check that files are re-syncd).
+        os.chmod(self.test_local_sub_dir, os.stat(self.test_local_sub_dir).st_mode & ~0o007)
+        os.chmod(self.test_local_file, os.stat(self.test_local_file).st_mode & ~0o007)
+
+        self.sftp.sync(src=self.local_dir, dst=self.remote_relative_dir, download=False)
+
+        # Check permissions match.
+        self.assertEqual(os.stat(self.test_local_sub_dir).st_mode, os.stat(self.test_remote_sub_dir).st_mode)
+        self.assertEqual(os.stat(self.test_local_file).st_mode, os.stat(self.test_remote_file).st_mode)
+
 
 if __name__ == '__main__':
     unittest.main()
