@@ -61,6 +61,7 @@ class SftpTests(SftpTestBase):
         transport.connect(username='admin', password='admin')# , pkey=pkey)
         sftp = paramiko.SFTPClient.from_transport(transport)
         sftp.listdir('.')
+        transport.close()
 
     def test_connection(self):
         from sftpsync import Sftp
@@ -72,6 +73,8 @@ class SftpTests(SftpTestBase):
         self.assertIn(dir_list[1].filename, ["test.txt", "foo"])
         dir_list2 = sftp.sftp.listdir_attr("from_server/foo")
         self.assertEqual(dir_list2[0].filename, 'bar.txt')
+
+        sftp.client.close()
 
     def test_sync(self):
         from sftpsync import Sftp
@@ -91,6 +94,8 @@ class SftpTests(SftpTestBase):
         if clean and op.exists(dst):
             shutil.rmtree(dst)
 
+        sftp.client.close()
+
     def test_sync_different_separator(self):
         from sftpsync import Sftp
 
@@ -109,6 +114,8 @@ class SftpTests(SftpTestBase):
         self.assertTrue(op.exists(op.join(dst.rstrip("\\"),"test.txt")))
         if clean and op.exists(dst):
             shutil.rmtree(dst)
+
+        sftp.client.close()
 
     def test_sync_abspath(self):
         from sftpsync import Sftp
@@ -134,6 +141,8 @@ class SftpTests(SftpTestBase):
 
         if clean and op.exists(dst):
             shutil.rmtree(dst)
+
+        sftp.client.close()
 
     def test_sync_upload(self):
         from sftpsync import Sftp
@@ -172,6 +181,8 @@ class SftpTests(SftpTestBase):
         dir_list = sftp.sftp.listdir_attr("to_server/")
         # check if direcotry is empty
         self.assertEqual(len(dir_list), 0)
+
+        sftp.client.close()
 
 
 class SftpTestFilePermissions(SftpTestBase):
