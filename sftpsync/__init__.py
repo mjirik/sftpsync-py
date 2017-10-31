@@ -115,7 +115,7 @@ class Sftp(object):
         else:
             return self._walk_local(*args, **kwargs)
 
-    def _makedirs_dst(self, path, remote=True, dry=False):
+    def _makedirs_dst(self, path, src_stat, remote=True, dry=False):
         if remote:
             paths = []
             while path not in ('/', ''):
@@ -129,11 +129,15 @@ class Sftp(object):
                     if not dry:
                         self.sftp.mkdir(path)
                     logger.debug('created destination directory %s', path)
+                if not dry:
+                    self.sftp.chmod(path, src_stat.st_mode)
         else:
             if not os.path.exists(path):
                 if not dry:
                     os.makedirs(path)
                 logger.debug('created destination directory %s', path)
+            if not dry:
+                os.chmod(path, src_stat.st_mode)
 
     def _validate_src(self, file, include, exclude):
         for re_ in include:
@@ -161,6 +165,8 @@ class Sftp(object):
             return
         if dst_stat.st_size != src_stat.st_size:
             return
+        if dst_stat.st_mode != src_stat.st_mode:
+            return
         return True
 
     def _save(self, src, dst, src_stat, remote=True):
@@ -168,10 +174,12 @@ class Sftp(object):
             logger.info('copying %s to %s@%s:%s', src, self.username, self.host, dst)
             self.sftp.put(src, dst, callback=self.callback)
             self.sftp.utime(dst, (int(src_stat.st_atime), int(src_stat.st_mtime)))
+            self.sftp.chmod(dst, src_stat.st_mode)
         else:
             logger.info('copying %s@%s:%s to %s', self.username, self.host, src, dst)
             self.sftp.get(src, dst, callback=self.callback)
             os.utime(dst, (int(src_stat.st_atime), int(src_stat.st_mtime)))
+            os.chmod(dst, src_stat.st_mode)
 
     def _delete_dst(self, path, files, remote=True, dry=False):
         if remote:
@@ -224,7 +232,11 @@ class Sftp(object):
         if not src:
             src = '/'
 
-        self._makedirs_dst(dst, remote=not download, dry=dry)
+        if download:
+            stat = self.sftp.lstat(src)
+        else:
+            stat = os.stat(src)
+        self._makedirs_dst(dst, stat, remote=not download, dry=dry)
 
         started = datetime.utcnow()
         total_size = 0
@@ -243,7 +255,7 @@ class Sftp(object):
             dst_list[type].append(dst_file)
 
             if type == 'dir':
-                self._makedirs_dst(dst_file, remote=not download, dry=dry)
+                self._makedirs_dst(dst_file, stat, remote=not download, dry=dry)
             elif type == 'file':
                 if not self._validate_dst(dst_file, stat, remote=not download):
                     if not dry:
