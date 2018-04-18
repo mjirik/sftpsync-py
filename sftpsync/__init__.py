@@ -136,6 +136,9 @@ class Sftp(object):
     def _makedirs_dst(self, path, remote=True, dry=False):
         paths = []
         while path not in ('/', ''):
+            # break also if path is like C:/
+            if len(path) == 3 and path[1:] == ":/":
+                break
             paths.insert(0, path)
             path = os.path.dirname(path)
 
